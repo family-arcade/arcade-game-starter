@@ -10,6 +10,9 @@ play the game. They can play together from different homes.
 
 **Time:** about an hour the first time, then as long as you like.
 
+The full guide, with a page for parents, is at
+**[learn.familyarcade.eu](https://learn.familyarcade.eu)**.
+
 ## What you need
 
 - **A computer, tablet or phone** with a web browser. A computer is easiest
@@ -56,7 +59,7 @@ play the game. They can play together from different homes.
 Claude reads the rules in this starter (`CLAUDE.md`) before it changes
 anything, so it already knows how games here work.
 
-## 4. Your first change (10 minutes)
+## 4. Ask for your first game (10 minutes)
 
 The child says what to change. The grown-up types it. Try:
 
@@ -75,22 +78,16 @@ a change without changing the main game. When Claude says it is done:
 That is the whole loop: **ask, merge, play.** Everything after this follows
 the same loop.
 
-## 5. Make it your own
+## 5. Make it better, one step at a time
 
-Start small and change one thing at a time. Some first asks:
+Play the first version, then change one thing at a time. Some next asks:
 
-> Change the stars into apples, and the players into hungry caterpillars.
+> The dragon should flap its wings and bob a little while it flies.
 
-> When you catch 5 in a row, make a happy sound and a little burst of
-> sparkles.
+> When you collect 5 gems in a row, play a happy sound and show a little
+> burst of sparkles.
 
-> Add a level 2 where the apples fall faster.
-
-Then your own idea, in one sentence:
-
-> Make a new game: you are a dragon flying through clouds, collecting
-> gems, and you must not touch the thunderclouds. Keep play together
-> working.
+> Add thunderclouds to dodge, and a level 2 where they move faster.
 
 Good habits:
 
