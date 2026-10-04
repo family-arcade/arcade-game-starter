@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0d1230" />
+    <title>Star Catch</title>
+  </head>
+  <body>
+    <div class="app">
+      <header class="top">
+        <h1 id="title">Star Catch</h1>
+        <div class="top-buttons">
+          <button id="who" class="btn" type="button"></button>
+          <button id="back" class="btn" type="button" hidden>Back to the arcade</button>
+        </div>
+      </header>
+      <div id="hud" class="hud" aria-label="Scores"></div>
+      <main id="stage" class="stage">
+        <div id="board" class="board">
+          <canvas id="canvas" role="img" aria-label="The game: coloured blobs catching falling stars"></canvas>
+          <div id="overlay" class="overlay" hidden></div>
+        </div>
+      </main>
+      <footer class="bar">
+        <p class="help">Drag on the game, or use the arrow keys or W A S D.</p>
+        <div id="together-slot"></div>
+      </footer>
+      <div id="live" class="sr-only" aria-live="polite"></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

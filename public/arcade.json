@@ -1,0 +1,8 @@
+{
+  "id": "star-catch",
+  "title": "Star Catch",
+  "players": { "min": 1, "max": 4 },
+  "colour": "#3d6bd6",
+  "blurb": "Slide your blob under the falling stars. First to 10 wins, or whoever has the most when the minute is up.",
+  "facts": ["1–4 players", "Play together with a code", "About 3 min"]
+}
