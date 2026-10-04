@@ -3,31 +3,41 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#0d1230" />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Ctext y=%2752%27 font-size=%2750%27%3E%E2%AD%90%3C/text%3E%3C/svg%3E" />
-    <title>Star Catch</title>
+    <meta name="theme-color" content="#14122b" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%233d6bd6%27/%3E%3Ccircle cx=%2732%27 cy=%2732%27 r=%2714%27 fill=%27%23ffd54a%27/%3E%3C/svg%3E" />
+    <title>My game</title>
   </head>
   <body>
     <div class="app">
       <header class="top">
-        <h1 id="title">Star Catch</h1>
-        <div class="top-buttons">
-          <button id="who" class="btn" type="button"></button>
-          <button id="back" class="btn" type="button" aria-label="Back to the arcade" hidden>&larr; Arcade</button>
-        </div>
+        <button id="back" class="btn" type="button" aria-label="Back to the arcade" hidden>&larr; Arcade</button>
+        <button id="who" class="btn who" type="button"></button>
       </header>
-      <div id="hud" class="hud" aria-label="Scores"></div>
-      <main id="stage" class="stage">
-        <div id="board" class="board">
-          <canvas id="canvas" role="img" aria-label="The game: coloured blobs catching falling stars"></canvas>
-          <div id="overlay" class="overlay" hidden></div>
-        </div>
+
+      <main class="home">
+        <section class="hero">
+          <h1 id="title">My game</h1>
+          <p class="lead">Ready for your idea.</p>
+          <div id="together-slot" class="together-slot"></div>
+          <p id="here" class="here" aria-live="polite"></p>
+        </section>
+
+        <section class="cards">
+          <div class="card">
+            <h2>This is your game’s home</h2>
+            <p>Ask your AI helper to make your game here.</p>
+            <p class="try">You could say:</p>
+            <blockquote class="quote">Make a game where you are a dragon collecting gems in the clouds, for 1 to 4 players. Keep play together working.</blockquote>
+          </div>
+          <div class="field" aria-hidden="true">
+            <span class="orb o1"></span>
+            <span class="orb o2"></span>
+            <span class="orb o3"></span>
+            <span class="orb o4"></span>
+            <span class="ridge"></span>
+          </div>
+        </section>
       </main>
-      <footer class="bar">
-        <p class="help">Drag on the game, or use the arrow keys or W A S D.</p>
-        <div id="together-slot"></div>
-      </footer>
-      <div id="live" class="sr-only" aria-live="polite"></div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

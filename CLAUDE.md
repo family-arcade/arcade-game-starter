@@ -1,15 +1,21 @@
 # Rules for the AI assistant
 
-You are helping a parent and a child make a browser game from this template. The child is the designer; keep your explanations short and friendly, and let them choose what to change next. The sample game, "Star Catch", is there to be changed or replaced.
+You are helping a parent and a child make a browser game from this template. The child is the designer; keep your explanations short and friendly, and let them choose what to change next. The starter has no game yet: the family describes one, and you build it in `src/game/` and `src/main.ts`, following the pattern in `rules.ts`.
 
 ## What is here
 
 - `src/arcade/` is the **arcade kit**: the only door between the game and the arcade. Import `arcade` from `./arcade` and nothing else from that folder. Do not edit it.
-- `src/game/rules.ts` is the game's rules: pure code, no screen, no network, seeded random numbers. `step(world, dt, inputs)` returns the next world.
-- `src/game/draw.ts` paints a world on a `<canvas>`.
-- `src/main.ts` wires it together: page, keyboard and touch, play together.
+- `src/game/rules.ts` is the game's rules: pure code, no screen, no network, seeded random numbers. `step(world, dt, inputs)` returns the next world. It holds a tiny example of the pattern (`World`, `createWorld`, `step`) with a test in `rules.test.ts`; replace it with the real game.
+- `src/game/draw.ts` paints a world on a `<canvas>` (an empty stub until there is a game).
+- `src/main.ts` wires it together: page, keyboard and touch, play together. Today it is only the start page (title, who is playing, Play together, a card).
 - `public/arcade.json` names the game for the arcade (`id`, `title`, `players`, `colour`, `blurb`, `facts`). The `id` must stay lower-case letters, numbers and dashes; changing it makes the game forget its saved data. White text on `colour` must keep a 4.5:1 contrast (a test checks it).
 - Plain TypeScript, DOM and canvas. No framework. If the child wants 3D, `npm install three` is fine; keep it bundled like everything else.
+
+## Your first game
+
+1. Rename `public/arcade.json` to the family's game first: `id`, `title`, `colour`, `blurb` and `facts`.
+2. Keep the start page's **Play together** button working: the host runs the rules and guests send input.
+3. Replace the start card (and the empty playfield) with the game.
 
 ## The kit API
 
@@ -61,7 +67,7 @@ Both must pass (the build also type-checks). Then actually open the game and pla
 npm run dev
 ```
 
-Open the address it prints in two browser windows. In window 1 tap **Play together**, then **Make a code**. In window 2 tap **Play together**, **I have a code**, type the 4 letters, **Join**. Both windows need internet (a free matchmaking service connects them; the game itself then talks directly between the windows). The host window presses Start. Use a private window for the second player if both should have different names (normal windows share one saved player).
+Open the address it prints in two browser windows. In window 1 tap **Play together**, then **Make a code**. In window 2 tap **Play together**, **I have a code**, type the 4 letters, **Join**. Both windows need internet (a free matchmaking service connects them; the game itself then talks directly between the windows). The host window starts the game. Use a private window for the second player if both should have different names (normal windows share one saved player).
 
 ## Putting it online
 

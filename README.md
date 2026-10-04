@@ -8,8 +8,6 @@ You will end up with a game at your own web address, such as
 `https://your-name.github.io/dragon-dash/`. Anyone you send the link to can
 play the game. They can play together from different homes.
 
-![Star Catch, the sample game, with two players](docs/screenshots/06-host-playing-together.png)
-
 **Time:** about an hour the first time, then as long as you like.
 
 ## What you need
@@ -46,7 +44,7 @@ play the game. They can play together from different homes.
    your game.
 4. When the dot turns green, usually after a minute or two, your game is at
    `https://<your-github-name>.github.io/<game-name>/`. Open it. You should
-   see Star Catch, the sample game. Play a round.
+   see your game's empty home page with Play together.
 
 ## 3. Meet your AI helper (5 minutes)
 
@@ -62,7 +60,8 @@ anything, so it already knows how games here work.
 
 The child says what to change. The grown-up types it. Try:
 
-> Make the stars pink and the players twice as big. Then run the tests.
+> Make a game where you are a dragon collecting gems in the clouds, for 1 to 4
+> players. Keep play together working. Then run the tests.
 
 Claude works on a copy of your game called a *branch*. A branch lets you try
 a change without changing the main game. When Claude says it is done:
