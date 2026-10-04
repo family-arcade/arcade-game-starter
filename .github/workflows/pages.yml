@@ -1,5 +1,9 @@
 name: Deploy to GitHub Pages
 
+# Every merge into main is tested, built and published. Until GitHub Pages is
+# turned on (Settings, Pages, Source "GitHub Actions"), the run still tests and
+# builds, then skips publishing with a note, so it stays green.
+
 on:
   push:
     branches: [main]
@@ -15,11 +19,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      pages-on: ${{ steps.pages.outputs.on }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -29,9 +32,33 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - name: Check that GitHub Pages is turned on
+        id: pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          source=$(gh api "repos/$REPO/pages" --jq .build_type 2>/dev/null || true)
+          if [ "$source" = "workflow" ]; then
+            echo "on=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "on=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Not published yet::The tests and the build passed. GitHub Pages is not turned on yet, so nothing was published. Turn it on in Settings, Pages, Source: GitHub Actions. Then run this workflow again."
+          fi
+      - if: steps.pages.outputs.on == 'true'
+        uses: actions/configure-pages@v5
+      - if: steps.pages.outputs.on == 'true'
+        uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+
+  deploy:
+    needs: build
+    if: needs.build.outputs.pages-on == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4

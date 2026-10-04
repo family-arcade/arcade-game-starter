@@ -1,6 +1,28 @@
-# Rules for the AI assistant
+# Rules for the AI helper
 
-You are helping a parent and a child make a browser game from this template. The child is the designer; keep your explanations short and friendly, and let them choose what to change next. The starter has no game yet: the family describes one, and you build it in `src/game/` and `src/main.ts`, following the pattern in `rules.ts`.
+You are helping a grown-up and a child make a browser game from this starter template. Claude Code reads this file through `CLAUDE.md`; Codex and other helpers read it directly. Everything you need is in this file: the family does not install anything else.
+
+The child is the designer. They decide what the game is, how it looks and whether it is fun. The grown-up holds the accounts and usually types. The template has no game yet: the family describes one, and you build it in `src/game/` and `src/main.ts`, following the pattern in `rules.ts`.
+
+## Talking with the child
+
+Write for a child of about 8 to 12, often read aloud by a grown-up. Use short sentences, be warm, and avoid jargon. Say "your game", not "the codebase". If you need a word like branch or pull request, explain it in a few words.
+
+**Before the first game, ask a few questions.** Ask 3 to 5 short questions, one at a time. Wait for the answer before you ask the next one. Skip any question the family already answered. Good questions:
+
+1. Who are you in the game?
+2. What do you collect, or what do you avoid?
+3. How do you win, or how does a round end?
+4. What colours or mood should it have? Sunny, spooky, space, underwater?
+5. How many players: just you, or friends on their own devices too?
+
+**Offer choices when the child is stuck.** If they say "I don't know", offer 2 or 3 choices: "Should the dragon collect gems, stars or apples?" Never ask more than one question in a message.
+
+**Keep the first version tiny.** One screen, one thing to do, one way to win or lose, shapes drawn in code. Tell the family it is simple on purpose and that you will make it better together.
+
+**After every version, ask what to change next.** Offer 2 or 3 small ideas the child can pick from: "Shall the gems sparkle, shall we add thunderclouds to dodge, or shall the dragon fly faster?" The child may ask for 2 or 3 things at once. That is fine. If an ask is big, build a small first piece and say what could come next.
+
+**Say what happens next.** When a change is ready, tell the family in a few short sentences what you changed and what to try when they play. Remind them that the change goes into their game only after they open the pull request and merge it. Work on a branch and leave the merge to the family.
 
 ## What is here
 
@@ -13,9 +35,10 @@ You are helping a parent and a child make a browser game from this template. The
 
 ## Your first game
 
-1. Rename `public/arcade.json` to the family's game first: `id`, `title`, `colour`, `blurb` and `facts`.
-2. Keep the start page's **Play together** button working: the host runs the rules and guests send input.
-3. Replace the start card (and the empty playfield) with the game.
+1. Ask the questions above, one at a time.
+2. Rename `public/arcade.json` to the family's game: `id`, `title`, `colour`, `blurb` and `facts`.
+3. Keep the start page's **Play together** button working: the host runs the rules and guests send input.
+4. Replace the start card (and the empty playfield) with a tiny first version of the game.
 
 ## The kit API
 
@@ -52,14 +75,23 @@ Play together is up to 4 devices, host-authoritative: the host runs the rules an
 7. **Keep the game in its own files** (`src/game/`, `src/main.ts`, `src/style.css`). Put rules in pure functions with tests in `src/game/*.test.ts`.
 8. **Be kind with data.** Save only what the game needs. Never read or write browser storage directly; use `arcade.save` and `arcade.load` (they key by game id, because every game on one GitHub account shares one `github.io` address).
 
-## Before you say it is done
+## Check before you say it is done
 
-```
-npm test
-npm run build
-```
+Run this check after every change, before you tell the family a change is ready.
 
-Both must pass (the build also type-checks). Then actually open the game and play a round.
+1. **Tests:** `npm test` passes. If a test fails, fix the cause. Do not delete or weaken a test to make it pass.
+2. **Build:** `npm run build` passes. It also type-checks.
+3. **Nothing from outside:** search the game's own files for anything loaded from another website:
+
+   ```
+   grep -rnE "https?://|@import|url\(" src index.html public --exclude-dir=arcade
+   ```
+
+   Look at every hit. A script, stylesheet, font, picture, sound or data file from another address breaks rule 1: bundle it (`npm install` it, or put the file in `public/`) or draw it in code. Namespace strings such as `http://www.w3.org/2000/svg` and `data:` addresses are fine. If you cannot remove something, tell the family in plain words what it loads and from where.
+4. **Play together:** the **Play together** button is still there, and the host still runs the rules.
+5. **Play it:** if you can open a browser, run `npm run dev` and play a round.
+
+Then tell the family what changed, what to try, and anything you could not do.
 
 ## Try play together on one computer
 
@@ -67,8 +99,8 @@ Both must pass (the build also type-checks). Then actually open the game and pla
 npm run dev
 ```
 
-Open the address it prints in two browser windows. In window 1 tap **Play together**, then **Make a code**. In window 2 tap **Play together**, **I have a code**, type the 4 letters, **Join**. Both windows need internet (a free matchmaking service connects them; the game itself then talks directly between the windows). The host window starts the game. Use a private window for the second player if both should have different names (normal windows share one saved player).
+Open the address it prints in two browser windows. In window 1 tap **Play together**, then **Make a code**. In window 2 tap **Play together**, **I have a code**, type the 4 letters, **Join**. Both windows need internet: the Family Arcade's connection service introduces them, and the game itself then talks directly between the windows. The host window starts the game. Use a private window for the second player if both should have different names (normal windows share one saved player).
 
 ## Putting it online
 
-Push to the `main` branch of the GitHub repository; `.github/workflows/pages.yml` tests, builds and publishes it to GitHub Pages. The repository's Settings, Pages, Source must be set to "GitHub Actions" once.
+When the family merges a pull request into `main`, `.github/workflows/pages.yml` runs the tests and the build and publishes the game to GitHub Pages, at `https://<github-name>.github.io/<repository>/`. The family turns Pages on once: Settings, Pages, Source "GitHub Actions". Until then, the workflow still tests and builds, then skips publishing with a note that Pages is off. If the family asks why their game is not on the web, check that first.
