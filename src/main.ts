@@ -419,7 +419,8 @@ function resize(): void {
 }
 
 function showWho(): void {
-  whoButton.textContent = `Playing as ${me.name}`;
+  whoButton.replaceChildren(Object.assign(document.createElement('span'), { className: 'long', textContent: 'Playing as ' }), me.name);
+  whoButton.setAttribute('aria-label', `Playing as ${me.name}. Change player`);
 }
 
 async function start(): Promise<void> {

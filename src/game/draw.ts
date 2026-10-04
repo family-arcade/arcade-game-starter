@@ -94,6 +94,7 @@ export function drawWorld(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasEleme
 
   // blobs
   const label = Math.max(16 / view.scale, 14);
+  const tags: Array<{ x0: number; x1: number; y: number }> = [];
   for (const b of world.blobs) {
     const at = view.shown.get(b.id) ?? b;
     ctx.fillStyle = b.colour;
@@ -122,8 +123,15 @@ export function drawWorld(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasEleme
     ctx.textBaseline = 'middle';
     const text = b.id === view.meId ? `${b.name} (you)` : b.name;
     const w = ctx.measureText(text).width + 14;
-    const ty = at.y - BLOB_RADIUS - label * 0.9;
+    let ty = at.y - BLOB_RADIUS - label * 0.9;
     const tx = Math.min(Math.max(at.x, w / 2 + 2), WIDTH - w / 2 - 2);
+    // two name tags never sit on top of each other: the later one moves up
+    for (let tries = 0; tries < 4; tries++) {
+      const clash = tags.find((t) => tx - w / 2 < t.x1 && tx + w / 2 > t.x0 && Math.abs(ty - t.y) < label * 1.5);
+      if (!clash) break;
+      ty = clash.y - label * 1.6;
+    }
+    tags.push({ x0: tx - w / 2, x1: tx + w / 2, y: ty });
     ctx.fillStyle = 'rgba(8,10,25,0.78)';
     ctx.beginPath();
     ctx.roundRect(tx - w / 2, ty - label * 0.75, w, label * 1.5, 8);

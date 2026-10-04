@@ -39,7 +39,7 @@ const CSS = `
 .ak-overlay{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(8,10,20,.82);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
 .ak-card{box-sizing:border-box;width:min(420px,100%);max-height:100%;overflow:auto;padding:22px;border-radius:20px;background:#1b2238;color:#fff;border:2px solid #5a6aa0;font-size:18px}
 .ak-card h2{margin:0 0 14px;font-size:24px}
-.ak-card label{display:block;margin:0 0 6px;font-size:16px;font-weight:600;color:#c9d2f0}
+.ak-card label{display:block;margin:14px 0 6px;font-size:16px;font-weight:600;color:#c9d2f0}
 .ak-swatches{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 16px}
 .ak-swatch{width:48px;height:48px;border-radius:50%;border:3px solid transparent;cursor:pointer;color:#fff;font:700 24px/1 system-ui,sans-serif;touch-action:manipulation}
 .ak-swatch[aria-checked="true"]{border-color:#fff;box-shadow:0 0 0 3px #1b2238,0 0 0 6px #fff}

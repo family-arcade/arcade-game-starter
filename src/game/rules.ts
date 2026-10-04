@@ -14,10 +14,10 @@ export const HEIGHT = 720;
 
 export const WIN_SCORE = 10;
 export const TIME_LIMIT = 60; // seconds
-export const BLOB_RADIUS = 28;
+export const BLOB_RADIUS = 26;
 export const BLOB_SPEED = 330; // pixels per second at full push
-export const BOT_SPEED = 0.7; // the computer blob is a bit slower
-export const STAR_RADIUS = 16;
+export const BOT_SPEED = 0.2; // the computer blob is much slower (a fraction of full speed)
+export const STAR_RADIUS = 15;
 export const MAX_STARS = 8;
 export const STEP = 1 / 60;
 
@@ -213,10 +213,10 @@ export function step(world: World, dt: number, inputs: Inputs): World {
         id: nextStarId++,
         x: STAR_RADIUS + rand() * (WIDTH - 2 * STAR_RADIUS),
         y: -STAR_RADIUS,
-        vy: 110 + rand() * 90,
+        vy: 150 + rand() * 100,
       });
     }
-    spawnIn += 0.45 + rand() * 0.5;
+    spawnIn += 0.6 + rand() * 0.6;
   }
 
   // 4. is it over?

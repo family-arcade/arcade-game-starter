@@ -191,6 +191,13 @@ describe('the computer blob', () => {
     expect(bot.score).toBeGreaterThan(2);
   });
 
+  it('is beatable: it does not reach 10 stars in the first 18 seconds', () => {
+    for (let seed = 1; seed <= 6; seed++) {
+      const w = run(playing([klara], seed), 18);
+      expect(w.blobs.find((b) => b.id === BOT_ID)!.score).toBeLessThan(WIN_SCORE);
+    }
+  });
+
   it('is deterministic', () => {
     expect(run(playing([klara], 5), 20)).toEqual(run(playing([klara], 5), 20));
   });
