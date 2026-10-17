@@ -1,0 +1,6 @@
+{
+  "game.start.playingAs": "Playing as ",
+  "game.start.playingAsLabel": "Playing as {name}. Change player",
+  "game.start.leaveFirst": "Leave the room to change who is playing",
+  "game.start.here": "{count, plural, one {Just you so far. Friends can join with the code.} other {# people are here.}}"
+}
