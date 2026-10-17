@@ -123,6 +123,18 @@ Claude knows these; it helps if the grown-up does too.
 - **Calm when asked**: if a device is set to reduce motion, no shaking or
   flashing.
 
+## The words in your game
+
+Every word a player reads lives in one file, `src/i18n/messages/en.json`, and
+the code reads each one with `t('game.<screen>.<name>')`. New words go in that
+file, not into the code. Nothing in the code changes or measures what `t()`
+gives back: use CSS for capital letters and the data for lengths.
+
+To edit the words in your browser with [Dialecto](https://app.dialecto.eu),
+put `DIALECTO_PROJECT=<your project id>` in a file named `.env.local`, run
+`npm run dev:dialecto`, open the page and press Alt+Shift+D. The Dialecto
+add-on is there only for that command: it is not in your game online.
+
 ## For grown-ups
 
 - **What the game keeps**: Players and saves stay in the browser on each
