@@ -15,6 +15,7 @@ import './style.css';
 import manifest from '../public/arcade.json';
 import { arcade, type Player, type Room } from './arcade';
 import { createWorld, step, type Inputs, type World } from './game/rules';
+import { t } from './i18n/t';
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 const whoButton = $<HTMLButtonElement>('who');
@@ -39,19 +40,19 @@ function showHere(room: Room | null): void {
     return;
   }
   countPeople(room.people.map((p) => p.id));
-  hereLine.textContent = world.here === 1 ? 'Just you so far. Friends can join with the code.' : `${world.here} people are here.`;
+  hereLine.textContent = t('game.start.here', { count: world.here });
 }
 
 function onRoom(room: Room | null): void {
   whoButton.disabled = room !== null;
-  whoButton.title = room ? 'Leave the room to change who is playing' : '';
+  whoButton.title = room ? t('game.start.leaveFirst') : '';
   showHere(room);
   if (room) room.onPeople(() => showHere(room));
 }
 
 function showWho(): void {
-  whoButton.replaceChildren(Object.assign(document.createElement('span'), { className: 'long', textContent: 'Playing as ' }), me.name);
-  whoButton.setAttribute('aria-label', `Playing as ${me.name}. Change player`);
+  whoButton.replaceChildren(Object.assign(document.createElement('span'), { className: 'long', textContent: t('game.start.playingAs') }), me.name);
+  whoButton.setAttribute('aria-label', t('game.start.playingAsLabel', { name: me.name }));
 }
 
 async function start(): Promise<void> {
