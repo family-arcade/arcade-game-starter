@@ -20,6 +20,7 @@
  */
 
 import Peer, { type DataConnection, type PeerOptions } from 'peerjs';
+import { t } from '../i18n/t';
 
 export type ConnStatus =
   | 'idle'
@@ -220,21 +221,21 @@ export class GameConnection<TMessage> {
           }, DIAL_RETRY_MS);
           return;
         }
-        this.handlers.onStatus('error', 'That code is already in use — start a new game.');
+        this.handlers.onStatus('error', t('kit.connection.codeInUse'));
         return;
       }
       if (err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error') {
         this.handlers.onStatus('reconnecting', 'Network hiccup — retrying…');
         return;
       }
-      this.handlers.onStatus('error', err.message ?? 'Connection error');
+      this.handlers.onStatus('error', err.message ?? t('kit.connection.failed'));
     });
   }
 
   private dial(): void {
     if (this.destroyed || !this.peer) return;
     if (Date.now() > this.dialDeadline) {
-      this.handlers.onStatus('error', 'Could not reach that game. Check the code and that the host is online.');
+      this.handlers.onStatus('error', t('kit.connection.unreachable'));
       return;
     }
     const conn = this.peer.connect(this.peerIdForCode(this.code), { reliable: true });

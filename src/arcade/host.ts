@@ -14,6 +14,7 @@
  */
 
 import Peer, { type DataConnection } from 'peerjs';
+import { t } from '../i18n/t';
 import { CONNECTION_SERVICE, DIAL_TIMEOUT_MS, type ConnStatus, type ConnectionConfig } from './peer';
 
 export interface HostHandlers<TMessage> {
@@ -184,7 +185,7 @@ export class GameHost<TMessage> {
           }, RETRY_MS);
           return;
         }
-        this.handlers.onStatus('error', 'That code is already in use — start a new game.');
+        this.handlers.onStatus('error', t('kit.connection.codeInUse'));
         return;
       }
       if (err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error') {
@@ -193,7 +194,7 @@ export class GameHost<TMessage> {
       }
       // A failed guest dial (peer-unavailable and the like) is theirs to retry.
       if (err.type === 'peer-unavailable') return;
-      this.handlers.onStatus('error', err.message ?? 'Connection error');
+      this.handlers.onStatus('error', err.message ?? t('kit.connection.failed'));
     });
   }
 

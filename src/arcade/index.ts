@@ -5,6 +5,8 @@
  * folder. Do not edit the other files in src/arcade/; build your game in
  * src/game/ and src/main.ts.
  *
+ * The kit's words are the `kit.*` keys in src/i18n/messages/en.json; a game copies them along with the kit.
+ *
  *   import { arcade } from './arcade';
  *
  *   // Who is playing? A name and a colour. null until somebody picked one.

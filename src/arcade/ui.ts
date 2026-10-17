@@ -7,6 +7,7 @@
  * ever put on screen with textContent, never as HTML.
  */
 
+import { t } from '../i18n/t';
 import { cleanName, type Player } from './player';
 import type { Person, Room, Together } from './together';
 
@@ -100,9 +101,9 @@ export function createUi({ getPlayer, setPlayer, together }: UiDeps): PlayerUi {
       const input = el('input', { class: 'ak-input ak-name', id: `ak-name-${id}`, type: 'text', maxlength: '20', autocomplete: 'off', autocapitalize: 'words', spellcheck: 'false' });
       input.value = existing?.name ?? '';
       const error = el('div', { class: 'ak-error', role: 'alert', hidden: '' });
-      const swatches = el('div', { class: 'ak-swatches', role: 'radiogroup', 'aria-label': 'Colour' });
+      const swatches = el('div', { class: 'ak-swatches', role: 'radiogroup', 'aria-label': t('kit.player.colour') });
       const buttons = PLAYER_COLOURS.map((c, i) => {
-        const b = el('button', { class: 'ak-swatch', type: 'button', role: 'radio', 'aria-label': `Colour ${i + 1}` });
+        const b = el('button', { class: 'ak-swatch', type: 'button', role: 'radio', 'aria-label': t('kit.player.colourOption', { n: i + 1 }) });
         b.style.background = c;
         b.addEventListener('click', () => {
           colour = c;
@@ -119,9 +120,9 @@ export function createUi({ getPlayer, setPlayer, together }: UiDeps): PlayerUi {
         });
       paint();
 
-      const go = el('button', { class: 'ak-btn ak-primary', type: 'button' }, "Let's play");
+      const go = el('button', { class: 'ak-btn ak-primary', type: 'button' }, t('kit.player.go'));
       const card = el('div', { class: 'ak-card', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': `ak-title-${id}` });
-      card.append(el('h2', { id: `ak-title-${id}` }, existing ? 'Player' : 'New player'), el('label', { for: `ak-name-${id}` }, 'Name'), input, el('label', {}, 'Colour'), swatches, error, go);
+      card.append(el('h2', { id: `ak-title-${id}` }, existing ? t('kit.player.title') : t('kit.player.titleNew')), el('label', { for: `ak-name-${id}` }, t('kit.player.name')), input, el('label', {}, t('kit.player.colour')), swatches, error, go);
       const overlay = el('div', { class: 'ak-overlay' }, card);
 
       const done = (p: Player) => {
@@ -132,7 +133,7 @@ export function createUi({ getPlayer, setPlayer, together }: UiDeps): PlayerUi {
       const submit = () => {
         const name = cleanName(input.value);
         if (!name) {
-          error.textContent = 'Type a name with 1 to 20 letters.';
+          error.textContent = t('kit.player.nameError');
           error.hidden = false;
           input.focus();
           return;
@@ -188,9 +189,9 @@ export function createUi({ getPlayer, setPlayer, together }: UiDeps): PlayerUi {
 
     const root = el('div', { class: 'ak-together' });
     const toggle = el('button', { class: 'ak-btn', type: 'button', 'aria-haspopup': 'dialog', 'aria-expanded': 'false', 'aria-controls': `ak-panel-${id}` });
-    const panel = el('div', { class: 'ak-panel', id: `ak-panel-${id}`, role: 'dialog', 'aria-label': 'Play together', hidden: '' });
+    const panel = el('div', { class: 'ak-panel', id: `ak-panel-${id}`, role: 'dialog', 'aria-label': t('kit.together.title'), hidden: '' });
     const body = el('div');
-    const closeBtn = el('button', { class: 'ak-btn ak-close', type: 'button', 'aria-label': 'Close' }, '×');
+    const closeBtn = el('button', { class: 'ak-btn ak-close', type: 'button', 'aria-label': t('kit.together.close') }, '×');
     panel.append(closeBtn, body);
     root.append(toggle, panel);
     container.append(root);
@@ -234,7 +235,7 @@ export function createUi({ getPlayer, setPlayer, together }: UiDeps): PlayerUi {
             }
             return;
           }
-          if (s === 'error') error = detail ?? 'The connection was lost.';
+          if (s === 'error') error = detail ?? t('kit.connection.lost');
           else if (s === 'connected') error = '';
           render();
         }),
@@ -273,19 +274,19 @@ export function createUi({ getPlayer, setPlayer, together }: UiDeps): PlayerUi {
     };
 
     function peopleList(people: Person[]): HTMLElement {
-      const ul = el('ul', { class: 'ak-people', 'aria-label': 'Who is here' });
+      const ul = el('ul', { class: 'ak-people', 'aria-label': t('kit.together.whoIsHere') });
       for (const p of people) {
         const dot = el('span', { class: 'ak-dot', 'aria-hidden': 'true' });
         dot.style.background = p.colour;
-        const tags = [p.isHost ? 'host' : '', p.me ? 'you' : ''].filter(Boolean).join(', ');
-        ul.append(el('li', {}, dot, el('span', {}, p.name), ...(tags ? [el('span', { class: 'ak-tag' }, `(${tags})`)] : [])));
+        const tag = p.isHost ? (p.me ? t('kit.together.tagHostYou') : t('kit.together.tagHost')) : p.me ? t('kit.together.tagYou') : '';
+        ul.append(el('li', {}, dot, el('span', {}, p.name), ...(tag ? [el('span', { class: 'ak-tag' }, tag)] : [])));
       }
       return ul;
     }
 
     function render(): void {
       const me = getPlayer();
-      toggle.textContent = room ? `Room ${room.code}` : 'Play together';
+      toggle.textContent = room ? t('kit.together.room', { code: room.code }) : t('kit.together.title');
       if (!isOpen) return;
       body.replaceChildren();
       const add = (...n: Node[]) => body.append(...n);
@@ -295,27 +296,27 @@ export function createUi({ getPlayer, setPlayer, together }: UiDeps): PlayerUi {
 
       if (room) {
         const hosting = room.isHost;
-        add(el('h2', {}, hosting ? 'Your code' : 'Joined'));
-        add(el('div', { class: 'ak-code', 'aria-label': `Code ${room.code.split('').join(' ')}` }, room.code));
-        add(el('p', { class: 'ak-hint' }, hosting ? 'Friends tap "I have a code" and type this.' : 'You are in this game.'));
+        add(el('h2', {}, hosting ? t('kit.together.yourCode') : t('kit.together.joined')));
+        add(el('div', { class: 'ak-code', 'aria-label': t('kit.together.codeLabel', { code: room.code.split('').join(' ') }) }, room.code));
+        add(el('p', { class: 'ak-hint' }, hosting ? t('kit.together.hintHost') : t('kit.together.hintGuest')));
         add(peopleList(room.people));
         if (error) add(el('div', { class: 'ak-error', role: 'alert' }, error));
-        else if (room.status === 'reconnecting') add(el('div', { class: 'ak-status', role: 'status' }, 'Reconnecting…'));
-        else if (room.status === 'waiting' && hosting) add(el('div', { class: 'ak-status', role: 'status' }, 'Waiting for friends…'));
-        const leaveBtn = el('button', { class: 'ak-btn', type: 'button' }, 'Leave');
+        else if (room.status === 'reconnecting') add(el('div', { class: 'ak-status', role: 'status' }, t('kit.together.reconnecting')));
+        else if (room.status === 'waiting' && hosting) add(el('div', { class: 'ak-status', role: 'status' }, t('kit.together.waiting')));
+        const leaveBtn = el('button', { class: 'ak-btn', type: 'button' }, t('kit.together.leave'));
         leaveBtn.addEventListener('click', leave);
         add(el('div', { class: 'ak-row' }, leaveBtn));
         return;
       }
 
-      add(el('h2', {}, 'Play together'));
-      if (me) add(el('p', { class: 'ak-status' }, `Playing as ${me.name}`));
+      add(el('h2', {}, t('kit.together.title')));
+      if (me) add(el('p', { class: 'ak-status' }, t('kit.together.playingAs', { name: me.name })));
       if (busy) {
         add(el('div', { class: 'ak-status', role: 'status' }, busy));
       } else {
-        const make = el('button', { class: 'ak-btn ak-primary', type: 'button' }, 'Make a code');
-        make.addEventListener('click', () => void start(() => together.host(), 'Making your code…'));
-        const have = el('button', { class: 'ak-btn', type: 'button' }, 'I have a code');
+        const make = el('button', { class: 'ak-btn ak-primary', type: 'button' }, t('kit.together.makeCode'));
+        make.addEventListener('click', () => void start(() => together.host(), t('kit.together.making')));
+        const have = el('button', { class: 'ak-btn', type: 'button' }, t('kit.together.haveCode'));
         have.addEventListener('click', () => {
           showJoin = true;
           error = '';
@@ -324,10 +325,10 @@ export function createUi({ getPlayer, setPlayer, together }: UiDeps): PlayerUi {
         });
         add(el('div', { class: 'ak-row' }, make, have));
         if (showJoin) {
-          const input = el('input', { class: 'ak-input', type: 'text', maxlength: '4', autocomplete: 'off', autocapitalize: 'characters', spellcheck: 'false', 'aria-label': 'Four-letter code', placeholder: 'ABCD' });
+          const input = el('input', { class: 'ak-input', type: 'text', maxlength: '4', autocomplete: 'off', autocapitalize: 'characters', spellcheck: 'false', 'aria-label': t('kit.together.codeInput'), placeholder: t('kit.together.codePlaceholder') });
           input.value = typed;
-          const go = el('button', { class: 'ak-btn ak-primary', type: 'button' }, 'Join');
-          const submit = () => void start(() => together.join(input.value), 'Joining…');
+          const go = el('button', { class: 'ak-btn ak-primary', type: 'button' }, t('kit.together.join'));
+          const submit = () => void start(() => together.join(input.value), t('kit.together.joining'));
           go.addEventListener('click', submit);
           input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {

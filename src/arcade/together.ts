@@ -6,6 +6,7 @@
  * own tiny `hello` and `people` messages so everyone has names and colours.
  */
 
+import { t } from '../i18n/t';
 import { GameConnection, generateCode, normalizeCode, type ConnStatus } from './peer';
 import { GameHost } from './host';
 import { cleanName, type Player } from './player';
@@ -151,7 +152,7 @@ class HostRoom extends RoomBase {
       const timer = setTimeout(() => {
         this.net.destroy();
         this.finish();
-        reject(new Error("Couldn't make a code. Check your internet connection and try again."));
+        reject(new Error(t('kit.connection.noCode')));
       }, HOST_READY_MS);
       this.settle = {
         ok: () => {
@@ -183,7 +184,7 @@ class HostRoom extends RoomBase {
         return;
       }
       if (s === 'error') {
-        this.settle.fail(new Error(detail ?? "Couldn't make a code. Try again."));
+        this.settle.fail(new Error(detail ?? t('kit.connection.noCodeRetry')));
         this.settle = null;
         return;
       }
@@ -264,7 +265,7 @@ class GuestRoom extends RoomBase {
         reject(e);
       };
       const timer = setTimeout(
-        () => give(new Error(`Couldn't join ${this.code}. Check the code, make sure the host is online, and that the game isn't full.`)),
+        () => give(new Error(t('kit.connection.joinFailed', { code: this.code }))),
         JOIN_MS,
       );
       this.joined = {
@@ -282,7 +283,7 @@ class GuestRoom extends RoomBase {
   private onNet(s: ConnStatus, detail?: string): void {
     if (this.joined) {
       // Until the host answers, only a hard failure matters; the timeout covers the rest.
-      if (s === 'error') this.joined.fail(new Error(detail ?? "Couldn't join. Try again."));
+      if (s === 'error') this.joined.fail(new Error(detail ?? t('kit.connection.joinRetry')));
       return;
     }
     this.setStatus(mapStatus(s), detail);
@@ -362,7 +363,7 @@ export function createTogether({ gameId, getPlayer }: TogetherDeps): Together {
 
     async join(rawCode: string) {
       const code = normalizeCode(rawCode);
-      if (code.length !== 4) throw new Error('A code has 4 letters or numbers, like K7QM.');
+      if (code.length !== 4) throw new Error(t('kit.connection.codeLength'));
       active?.leave();
       const room = new GuestRoom(code, me(), prefix);
       active = room;
