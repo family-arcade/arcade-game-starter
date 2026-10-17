@@ -125,7 +125,7 @@ Claude knows these; it helps if the grown-up does too.
 
 ## The words in your game
 
-Every word a player reads lives in one file, `src/i18n/messages/en.json`, and
+Your game's words live in one file, `src/i18n/messages/en.json`, and
 the code reads each one with `t('game.<screen>.<name>')`. New words go in that
 file, not into the code. Nothing in the code changes or measures what `t()`
 gives back: use CSS for capital letters and the data for lengths.
