@@ -1,6 +1,6 @@
 import { loadEnv, type Plugin } from 'vite';
 import { defineConfig } from 'vitest/config';
-import { firstPaint } from './src/i18n/firstPaint';
+import { firstPaint } from './src/i18n/firstPaint.ts';
 
 // The page's words are read from disk on every page transform, so editing src/i18n/messages/en.json
 // never restarts the dev server (a restart would drop a Play together room). Node's fs is loaded this way
