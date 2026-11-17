@@ -17,6 +17,7 @@ const MAX_NODES = 5000;
 export type Wire =
   | { k: 'hello'; name: string; colour: string }
   | { k: 'people'; you: string; list: WirePerson[] }
+  | { k: 'full' }
   | { k: 'g'; d: Record<string, unknown> };
 
 export interface WirePerson extends Player {
@@ -82,6 +83,8 @@ export function isWire(v: unknown): v is Wire {
           isColour(p.colour),
       );
     }
+    case 'full':
+      return true;
     case 'g':
       return messageProblem(v.d) === null;
     default:

@@ -31,6 +31,24 @@ export interface Person {
 /** A message from your game. Any plain object that is numbers, text, true/false, null, lists and objects. */
 export type GameMessage = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
+export interface SendOptions {
+  /** Skip the message when more than this many bytes are already queued to the person. */
+  dropIfBusy?: number;
+}
+
+export type JoinFailure = 'no-room' | 'full' | 'timeout';
+
+/** Why `join` failed: `no-room` (no such code), `full` (4 people already) or `timeout` (nobody answered). */
+export class JoinError extends Error {
+  constructor(
+    readonly reason: JoinFailure,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'JoinError';
+  }
+}
+
 export type TogetherStatus = 'waiting' | 'connected' | 'reconnecting' | 'error' | 'left';
 
 export interface Room {
@@ -48,8 +66,15 @@ export interface Room {
   onStatus(cb: (status: TogetherStatus, detail?: string) => void): () => void;
   /** A guest sends to the host. The host sends to everyone. Throws if the message is not allowed (16 KB max). */
   send(msg: object): void;
-  /** Host only: send to one person by id. */
-  sendTo(id: string, msg: object): void;
+  /**
+   * Host only: send to one person by id. With `{ dropIfBusy: bytes }` the message is
+   * skipped, and `false` returned, when more than that many bytes are still queued to
+   * that person (a slow link): use it for state that the next message replaces.
+   * Returns `true` when the message went out (or was handed to the channel).
+   */
+  sendTo(id: string, msg: object, opts?: SendOptions): boolean;
+  /** Bytes queued to one person and not yet on the wire (0 if unknown or not connected). A guest can ask about `"host"`. */
+  backlog(id: string): number;
   /** Leave (a host leaving ends the room for everyone). */
   leave(): void;
 }
@@ -96,7 +121,8 @@ abstract class RoomBase implements Room {
   }
 
   abstract send(msg: object): void;
-  abstract sendTo(id: string, msg: object): void;
+  abstract sendTo(id: string, msg: object, opts?: SendOptions): boolean;
+  abstract backlog(id: string): number;
   abstract leave(): void;
 
   protected setStatus(s: TogetherStatus, detail?: string): void {
@@ -142,7 +168,7 @@ class HostRoom extends RoomBase {
         },
         onMessage: (id, w) => this.onWire(id, w),
       },
-      { prefix, isMessage: isWire, maxGuests: MAX_GUESTS },
+      { prefix, isMessage: isWire, maxGuests: MAX_GUESTS, fullMessage: { k: 'full' } },
     );
   }
 
@@ -225,9 +251,15 @@ class HostRoom extends RoomBase {
     this.net.broadcast({ k: 'g', d: msg as Record<string, unknown> });
   }
 
-  sendTo(id: string, msg: object): void {
+  sendTo(id: string, msg: object, opts?: SendOptions): boolean {
     checkOutgoing(msg, 'sendTo');
+    if (opts?.dropIfBusy !== undefined && this.net.backlog(id) > opts.dropIfBusy) return false;
     this.net.send(id, { k: 'g', d: msg as Record<string, unknown> });
+    return true;
+  }
+
+  backlog(id: string): number {
+    return this.net.backlog(id);
   }
 
   leave(): void {
@@ -249,6 +281,12 @@ class GuestRoom extends RoomBase {
         onStatus: (s, d) => this.onNet(s, d),
         onMessage: (w) => this.onWire(w),
         onOpen: () => void this.net.send({ k: 'hello', name: this.me.name, colour: this.me.colour }),
+        // While joining, "no such peer" means a wrong code (or a host that is not there): say so now.
+        onPeerUnavailable: () => {
+          if (!this.joined) return false;
+          this.joined.fail(new JoinError('no-room', kt('kit.connection.wrongCode')));
+          return true;
+        },
       },
       { prefix, isMessage: isWire, dialTimeoutMs: JOIN_MS },
     );
@@ -265,7 +303,7 @@ class GuestRoom extends RoomBase {
         reject(e);
       };
       const timer = setTimeout(
-        () => give(new Error(kt('kit.connection.joinFailed', { code: this.code }))),
+        () => give(new JoinError('timeout', kt('kit.connection.joinFailed', { code: this.code }))),
         JOIN_MS,
       );
       this.joined = {
@@ -296,6 +334,8 @@ class GuestRoom extends RoomBase {
       this.setStatus('connected');
       this.joined?.ok();
       this.emitPeople();
+    } else if (w.k === 'full') {
+      this.joined?.fail(new JoinError('full', kt('kit.connection.roomFull')));
     } else if (w.k === 'g' && !this.joined) {
       this.deliver(w.d, HOST_ID);
     }
@@ -306,8 +346,12 @@ class GuestRoom extends RoomBase {
     this.net.send({ k: 'g', d: msg as Record<string, unknown> });
   }
 
-  sendTo(): void {
+  sendTo(): boolean {
     throw new Error('room.sendTo: only the host can send to one person. Guests use room.send(msg), which goes to the host.');
+  }
+
+  backlog(id: string): number {
+    return id === HOST_ID ? this.net.backlog() : 0;
   }
 
   leave(): void {

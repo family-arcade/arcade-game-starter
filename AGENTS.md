@@ -62,9 +62,12 @@ panel.onRoom((room) => {               // room is null when we leave
   room?.people;                        // [{ id, name, colour, isHost, me }]
   room?.onPeople(cb); room?.onMessage((msg, fromId) => {}); room?.onStatus(cb);
   room?.send({ type: 'move' });        // guest to host, or host to everyone
-  room?.sendTo(id, { type: 'hi' });    // host only
+  room?.sendTo(id, { type: 'hi' });    // host only; returns true
+  room?.sendTo(id, snap, { dropIfBusy: 65536 });  // false (not sent) while over 64 KB is queued to that person
+  room?.backlog(id);                   // bytes queued to that person; a guest asks about "host"
 });
 // or without the panel: await arcade.together.host()  /  await arcade.together.join('ABCD')
+// join rejects with a JoinError: e.reason is 'no-room' (wrong code, at once), 'full' (4 people already) or 'timeout'
 ```
 
 Play together is up to 4 devices, host-authoritative: the host runs the rules and sends the world; guests send only their input. Messages are plain JSON objects, at most 16 KB each. Keep them small (send positions and scores, not pictures).

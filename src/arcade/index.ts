@@ -31,8 +31,12 @@
  *     room.onStatus((status) => {});                    // 'waiting' | 'connected' | 'reconnecting' | 'error' | 'left'
  *     room.send({ type: 'move', x: 3 });                // guest -> host, or host -> everyone
  *     if (room.isHost) room.sendTo(room.people[1].id, { type: 'hi' });  // host only
+ *     // Slow link? Skip a message the next one replaces: false means it was dropped.
+ *     if (room.isHost) room.sendTo(id, snapshot, { dropIfBusy: 64 * 1024 });
+ *     room.backlog(id);                                 // bytes queued to that person (a guest asks about "host")
  *   });
  *   // Without the panel: const room = await arcade.together.host()  or  .join('ABCD')
+ *   // join rejects with a JoinError: e.reason is 'no-room' (wrong code), 'full' or 'timeout'.
  *
  *   // In play: the pause button, top right, and a menu that always ends in Exit (it saves, then leaves).
  *   const pause = arcade.ui.pauseMenu({ onPause, onResume, save, toStart, help, items: [{ label, onSelect }] });
@@ -53,7 +57,8 @@ import { createPauseMenu, type PauseMenu, type PauseMenuOptions } from './pause'
 import { formatSlots, hasOwn, kitWords, useKitWords } from './words';
 
 export type { Player } from './player';
-export type { Person, Room, GameMessage, TogetherStatus, Together } from './together';
+export type { Person, Room, GameMessage, TogetherStatus, Together, SendOptions, JoinFailure } from './together';
+export { JoinError } from './together';
 export type { TogetherPanel } from './ui';
 export type { PauseMenu, PauseMenuOptions, PauseItem } from './pause';
 export type { KitKey } from './words';

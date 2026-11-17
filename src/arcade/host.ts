@@ -15,7 +15,7 @@
 
 import Peer, { type DataConnection } from 'peerjs';
 import { kt } from './words';
-import { CONNECTION_SERVICE, DIAL_TIMEOUT_MS, type ConnStatus, type ConnectionConfig } from './peer';
+import { CONNECTION_SERVICE, DIAL_TIMEOUT_MS, connBacklog, type ConnStatus, type ConnectionConfig } from './peer';
 
 export interface HostHandlers<TMessage> {
   onStatus: (status: ConnStatus, detail?: string) => void;
@@ -29,6 +29,8 @@ export interface HostHandlers<TMessage> {
 export interface HostConfig<TMessage> extends ConnectionConfig<TMessage> {
   /** Live guests accepted at once (default 3, so four devices in all). */
   maxGuests?: number;
+  /** Sent to a newcomer turned away from a full table, just before the channel closes. */
+  fullMessage?: TMessage;
 }
 
 const RETRY_MS = 2500;
@@ -41,6 +43,7 @@ export class GameHost<TMessage> {
   private prefix: string;
   private isMessage: (value: unknown) => value is TMessage;
   private maxGuests: number;
+  private fullMessage: TMessage | undefined;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   /** Until when a stale broker registration of our own id is retried. */
   private hostDeadline = 0;
@@ -52,6 +55,7 @@ export class GameHost<TMessage> {
     this.prefix = config.prefix;
     this.isMessage = config.isMessage;
     this.maxGuests = config.maxGuests ?? DEFAULT_MAX_GUESTS;
+    this.fullMessage = config.fullMessage;
     this.dialTimeoutMs = config.dialTimeoutMs ?? DIAL_TIMEOUT_MS;
   }
 
@@ -73,6 +77,12 @@ export class GameHost<TMessage> {
     if (!conn || !conn.open) return false;
     conn.send(msg);
     return true;
+  }
+
+  /** Bytes queued to one guest (0 if unknown or not connected). */
+  backlog(guestId: string): number {
+    const conn = this.conns.get(guestId);
+    return conn && conn.open ? connBacklog(conn) : 0;
   }
 
   /** Send to every open guest; returns how many it reached. */
@@ -142,8 +152,15 @@ export class GameHost<TMessage> {
       // never "past the limit": they are coming back and take their own seat.
       if (!existing && this.conns.size >= this.maxGuests) {
         try {
-          conn.on('open', () => conn.close());
-          conn.close();
+          // Say why before closing, so the newcomer need not wait out a timeout.
+          conn.on('open', () => {
+            try {
+              if (this.fullMessage !== undefined) conn.send(this.fullMessage);
+              conn.close({ flush: true });
+            } catch {
+              /* refusing a stranger must never hurt the live game */
+            }
+          });
         } catch {
           /* refusing a stranger must never hurt the live game */
         }
