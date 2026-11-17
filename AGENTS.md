@@ -63,7 +63,7 @@ panel.onRoom((room) => {               // room is null when we leave
   room?.onPeople(cb); room?.onMessage((msg, fromId) => {}); room?.onStatus(cb);
   room?.send({ type: 'move' });        // guest to host, or host to everyone
   room?.sendTo(id, { type: 'hi' });    // host only; returns true
-  room?.sendTo(id, snap, { dropIfBusy: 65536 });  // false (not sent) while over 64 KB is queued to that person
+  room?.sendTo(id, snap, { dropIfBusy: 8 * 1024 });  // false (not sent) while over 8 KB is queued to that person; a row is ~400 B, so 8 KB is ~20 rows, ~0.2 s behind
   room?.backlog(id);                   // bytes queued to that person; a guest asks about "host"
 });
 // or without the panel: await arcade.together.host()  /  await arcade.together.join('ABCD')

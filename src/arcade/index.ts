@@ -32,7 +32,7 @@
  *     room.send({ type: 'move', x: 3 });                // guest -> host, or host -> everyone
  *     if (room.isHost) room.sendTo(room.people[1].id, { type: 'hi' });  // host only
  *     // Slow link? Skip a message the next one replaces: false means it was dropped.
- *     if (room.isHost) room.sendTo(id, snapshot, { dropIfBusy: 64 * 1024 });
+ *     if (room.isHost) room.sendTo(id, snapshot, { dropIfBusy: 8 * 1024 });  // a row is ~400 B: 8 KB is ~20 rows, ~0.2 s behind
  *     room.backlog(id);                                 // bytes queued to that person (a guest asks about "host")
  *   });
  *   // Without the panel: const room = await arcade.together.host()  or  .join('ABCD')
