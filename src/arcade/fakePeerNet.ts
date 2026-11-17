@@ -43,6 +43,10 @@ export interface FakePeerNet {
   delivered: () => number;
   /** Set the bytes queued on every channel whose far end is `peerId` (what `room.backlog(peerId)` reports). */
   setBacklog: (peerId: string, bytes: number) => void;
+  /** While true, a flushed close is not honoured by the far end (a client that never closes). */
+  setStubborn: (on: boolean) => void;
+  /** Connections still open, for a test that counts leftovers. */
+  openConnections: () => number;
   /** Forget every peer and anything queued (between tests). */
   reset: () => void;
 }
@@ -53,6 +57,7 @@ export function createFakePeerNet(): FakePeerNet {
   let made = 0;
   let delivered = 0;
   const allConns = new Set<FakeConnection>();
+  let stubborn = false;
   const later = (fn: () => void) => queue.push(fn);
 
   class FakeConnection extends Emitter {
@@ -80,8 +85,11 @@ export function createFakePeerNet(): FakePeerNet {
     dataChannel = { bufferedAmount: 0 };
     close(options?: { flush?: boolean }): void {
       if (options?.flush && !this.closed) {
-        // messages already sent arrive first, as with PeerJS's flushed close
-        later(() => this.close());
+        // messages already sent arrive first; like PeerJS's flushed close this only asks the far end to close,
+        // and a `stubborn` far end (a modified client) does not
+        later(() => {
+          if (!stubborn) this.close();
+        });
         return;
       }
       if (this.closed) return;
@@ -154,7 +162,12 @@ export function createFakePeerNet(): FakePeerNet {
     setBacklog: (peerId, bytes) => {
       for (const c of allConns) if (c.peer === peerId) c.dataChannel.bufferedAmount = bytes;
     },
+    setStubborn: (on) => {
+      stubborn = on;
+    },
+    openConnections: () => [...allConns].filter((c) => c.open).length,
     reset: () => {
+      stubborn = false;
       allConns.clear();
       queue = [];
       broker.clear();

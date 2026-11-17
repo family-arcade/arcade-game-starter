@@ -36,7 +36,8 @@
  *     room.backlog(id);                                 // bytes queued to that person (a guest asks about "host")
  *   });
  *   // Without the panel: const room = await arcade.together.host()  or  .join('ABCD')
- *   // join rejects with a JoinError: e.reason is 'no-room' (wrong code), 'full' or 'timeout'.
+ *   // join rejects with a JoinError: e.reason is 'no-room' (no such code; the connection service answers after about 5 s),
+ *   // 'full' or 'timeout' (18 s). A code that is not 4 letters or numbers, or a hard connection failure, is a plain Error.
  *
  *   // In play: the pause button, top right, and a menu that always ends in Exit (it saves, then leaves).
  *   const pause = arcade.ui.pauseMenu({ onPause, onResume, save, toStart, help, items: [{ label, onSelect }] });

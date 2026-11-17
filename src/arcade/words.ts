@@ -43,7 +43,7 @@ export const kitWords = {
   'kit.connection.noCode': "Couldn't make a code. Check your internet connection and try again.",
   'kit.connection.noCodeRetry': "Couldn't make a code. Try again.",
   'kit.connection.joinFailed': "Couldn't join {code}. Check the code, make sure the host is online, and that the game isn't full.",
-  'kit.connection.wrongCode': 'Wrong code. Check the four letters and that the host is online.',
+  'kit.connection.wrongCode': 'Wrong code. Check the code and that the host is online.',
   'kit.connection.roomFull': 'This game is full.',
   'kit.connection.joinRetry': "Couldn't join. Try again.",
   'kit.connection.codeLength': 'A code has 4 letters or numbers, like K7QM.',

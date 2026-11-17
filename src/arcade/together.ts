@@ -70,7 +70,7 @@ export interface Room {
    * Host only: send to one person by id. With `{ dropIfBusy: bytes }` the message is
    * skipped, and `false` returned, when more than that many bytes are still queued to
    * that person (a slow link): use it for state that the next message replaces.
-   * Returns `true` when the message went out (or was handed to the channel).
+   * Returns `true` unless the message was dropped for being busy (it does not say the person's channel is open).
    */
   sendTo(id: string, msg: object, opts?: SendOptions): boolean;
   /** Bytes queued to one person and not yet on the wire (0 if unknown or not connected). A guest can ask about `"host"`. */
@@ -355,6 +355,8 @@ class GuestRoom extends RoomBase {
   }
 
   leave(): void {
+    // leaving while still joining ends the join now (no 18 s timer left running, no promise left hanging)
+    this.joined?.fail(new Error(kt('kit.connection.lost')));
     this.net.destroy();
     this.finish();
   }

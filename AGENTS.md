@@ -67,7 +67,7 @@ panel.onRoom((room) => {               // room is null when we leave
   room?.backlog(id);                   // bytes queued to that person; a guest asks about "host"
 });
 // or without the panel: await arcade.together.host()  /  await arcade.together.join('ABCD')
-// join rejects with a JoinError: e.reason is 'no-room' (wrong code, at once), 'full' (4 people already) or 'timeout'
+// join rejects with a JoinError: e.reason is 'no-room' (no such code: the connection service answers after about 5 s), 'full' (4 people already) or 'timeout' (18 s); a plain Error for a code that is not 4 letters or numbers or a hard connection failure
 ```
 
 Play together is up to 4 devices, host-authoritative: the host runs the rules and sends the world; guests send only their input. Messages are plain JSON objects, at most 16 KB each. Keep them small (send positions and scores, not pictures).

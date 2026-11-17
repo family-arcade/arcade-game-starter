@@ -124,7 +124,54 @@ describe('arcade.together', () => {
     guests.forEach((g) => g.leave());
   });
 
-  it('a code nobody hosts rejects at once with no-room', async () => {
+  it('a turned-away channel is force-closed when the newcomer never closes it, and one that never opens after 10 s', async () => {
+    const host = await settle(device('g').host());
+    const guests: Room[] = [];
+    for (const p of [zoe, ola, { name: 'Max', colour: '#8a56d6' }]) guests.push(await settle(device('g', p).join(host.code)));
+    await pump();
+    const open = () => net.current!.openConnections();
+    const base = open();
+
+    net.current!.setStubborn(true);
+    const Peer = net.current!.Peer as unknown as new (id?: string) => { on(e: string, f: (...a: unknown[]) => void): void; connect(id: string): { on(e: string, f: (...a: unknown[]) => void): void; open: boolean } };
+    const stranger = new Peer();
+    const seen: unknown[] = [];
+    let closed = false;
+    stranger.on('open', () => {
+      const c = stranger.connect(`ak1-g-${host.code}`);
+      c.on('data', (m) => seen.push(m));
+      c.on('close', () => (closed = true));
+    });
+    vi.useFakeTimers();
+    await pump();
+    expect(seen).toEqual([{ k: 'full' }]);
+    expect(closed).toBe(false); // the stubborn client keeps its end open
+    expect(open()).toBe(base + 2);
+    await vi.advanceTimersByTimeAsync(2900);
+    net.current!.flush();
+    expect(open()).toBe(base + 2);
+    await vi.advanceTimersByTimeAsync(200);
+    net.current!.flush();
+    expect(closed).toBe(true);
+    expect(open()).toBe(base);
+    vi.useRealTimers();
+    host.leave();
+    guests.forEach((g) => g.leave());
+  });
+
+  it('leaving while a join is pending ends the join at once', async () => {
+    const guest = device('g', zoe);
+    const joining = guest.join('ABCD');
+    const outcome = joining.then(
+      () => null,
+      (e) => e,
+    );
+    guest.current()!.leave();
+    expect(await outcome).toBeInstanceOf(Error);
+    expect(guest.current()).toBeNull();
+  });
+
+  it('a code nobody hosts rejects with no-room', async () => {
     const err = await settle(device('g').join('ABCD')).catch((e) => e);
     expect(err).toBeInstanceOf(JoinError);
     expect(err.reason).toBe('no-room');
