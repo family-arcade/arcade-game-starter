@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CONNECTION_SERVICE, GameConnection, generateCode, normalizeCode } from './peer';
+import { CONNECTION_SERVICE, GameConnection, connBacklog, generateCode, normalizeCode } from './peer';
 import { seededRng } from './rng';
 
 // A minimal in-memory PeerJS stand-in: just enough surface for GameConnection
@@ -237,5 +237,19 @@ describe('GameConnection — a reload must not strand the party', () => {
     vi.advanceTimersByTime(21_000);
     fakePeers[fakePeers.length - 1].emit('error', { type: 'unavailable-id' });
     expect(statuses[statuses.length - 1]).toBe('error');
+  });
+});
+
+describe('connBacklog', () => {
+  // Pins the two PeerJS fields it reads (`dataChannel.bufferedAmount`, and the private `_buffer` of ArrayBuffers PeerJS queues past 8 MiB).
+  const conn = (c: object) => c as Parameters<typeof connBacklog>[0];
+  it('adds the channel queue and what PeerJS holds back', () => {
+    expect(connBacklog(conn({ dataChannel: { bufferedAmount: 1500 } }))).toBe(1500);
+    expect(connBacklog(conn({ dataChannel: { bufferedAmount: 100 }, _buffer: [new ArrayBuffer(40), new ArrayBuffer(60)] }))).toBe(200);
+  });
+  it('is 0 when it knows nothing', () => {
+    expect(connBacklog(null)).toBe(0);
+    expect(connBacklog(conn({}))).toBe(0);
+    expect(connBacklog(conn({ dataChannel: null, _buffer: 'x' }))).toBe(0);
   });
 });

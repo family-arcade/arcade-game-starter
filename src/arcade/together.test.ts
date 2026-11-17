@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FakePeerNet } from './fakePeerNet';
-import { createTogether, type GameMessage, type Room } from './together';
+import { createTogether, JoinError, type GameMessage, type Room } from './together';
 
 const net = vi.hoisted(() => ({ current: null as FakePeerNet | null }));
 vi.mock('peerjs', async () => {
@@ -114,21 +114,113 @@ describe('arcade.together', () => {
     await pump();
     expect(host.people).toHaveLength(4);
 
-    vi.useFakeTimers();
-    const fifth = device('g', { name: 'Late', colour: '#d64fa8' }).join(host.code);
-    const outcome = fifth.then(
-      () => 'joined',
-      () => 'refused',
-    );
-    for (let i = 0; i < 30; i++) {
-      net.current!.flush();
-      await vi.advanceTimersByTimeAsync(1000);
-    }
-    expect(await outcome).toBe('refused');
-    vi.useRealTimers();
+    // the host says so before closing: no waiting out the timeout
+    const err = await settle(device('g', { name: 'Late', colour: '#d64fa8' }).join(host.code)).catch((e) => e);
+    expect(err).toBeInstanceOf(JoinError);
+    expect(err.reason).toBe('full');
+    expect(err.message).toBe('This game is full.');
     expect(host.people).toHaveLength(4);
     host.leave();
     guests.forEach((g) => g.leave());
+  });
+
+  it('a turned-away channel is force-closed when the newcomer never closes it, and one that never opens after 10 s', async () => {
+    const host = await settle(device('g').host());
+    const guests: Room[] = [];
+    for (const p of [zoe, ola, { name: 'Max', colour: '#8a56d6' }]) guests.push(await settle(device('g', p).join(host.code)));
+    await pump();
+    const open = () => net.current!.openConnections();
+    const base = open();
+
+    net.current!.setStubborn(true);
+    const Peer = net.current!.Peer as unknown as new (id?: string) => { on(e: string, f: (...a: unknown[]) => void): void; connect(id: string): { on(e: string, f: (...a: unknown[]) => void): void; open: boolean } };
+    const stranger = new Peer();
+    const seen: unknown[] = [];
+    let closed = false;
+    stranger.on('open', () => {
+      const c = stranger.connect(`ak1-g-${host.code}`);
+      c.on('data', (m) => seen.push(m));
+      c.on('close', () => (closed = true));
+    });
+    vi.useFakeTimers();
+    await pump();
+    expect(seen).toEqual([{ k: 'full' }]);
+    expect(closed).toBe(false); // the stubborn client keeps its end open
+    expect(open()).toBe(base + 2);
+    await vi.advanceTimersByTimeAsync(2900);
+    net.current!.flush();
+    expect(open()).toBe(base + 2);
+    await vi.advanceTimersByTimeAsync(200);
+    net.current!.flush();
+    expect(closed).toBe(true);
+    expect(open()).toBe(base);
+    vi.useRealTimers();
+    host.leave();
+    guests.forEach((g) => g.leave());
+  });
+
+  it('leaving while a join is pending ends the join at once', async () => {
+    const guest = device('g', zoe);
+    const joining = guest.join('ABCD');
+    const outcome = joining.then(
+      () => null,
+      (e) => e,
+    );
+    guest.current()!.leave();
+    expect(await outcome).toBeInstanceOf(Error);
+    expect(guest.current()).toBeNull();
+  });
+
+  it('a code nobody hosts rejects with no-room', async () => {
+    const err = await settle(device('g').join('ABCD')).catch((e) => e);
+    expect(err).toBeInstanceOf(JoinError);
+    expect(err.reason).toBe('no-room');
+    expect(err.message).toMatch(/^Wrong code/);
+  });
+
+  it('a network that never answers times out with reason timeout', async () => {
+    vi.useFakeTimers();
+    const outcome = device('g').join('ABCD').then(
+      () => null,
+      (e) => e,
+    );
+    // never flush: the fake broker stays silent, as a dead network does
+    await vi.advanceTimersByTimeAsync(19_000);
+    const err = await outcome;
+    vi.useRealTimers();
+    expect(err).toBeInstanceOf(JoinError);
+    expect(err.reason).toBe('timeout');
+    expect(err.message).toMatch(/Couldn't join ABCD/);
+  });
+
+  it('backlog reports the queued bytes, and dropIfBusy skips a send over the limit', async () => {
+    const host = await settle(device('g').host());
+    const guest = await settle(device('g', zoe).join(host.code));
+    await pump();
+    const gid = host.people.find((p) => !p.isHost)!.id;
+    const got: GameMessage[] = [];
+    guest.onMessage((m) => got.push(m));
+
+    expect(host.backlog(gid)).toBe(0);
+    expect(host.backlog('nobody')).toBe(0);
+    expect(guest.backlog('host')).toBe(0);
+    expect(host.sendTo(gid, { n: 1 }, { dropIfBusy: 1000 })).toBe(true);
+
+    net.current!.setBacklog(gid, 5000);
+    net.current!.setBacklog(`ak1-g-${host.code}`, 7000);
+    expect(host.backlog(gid)).toBe(5000);
+    expect(guest.backlog('host')).toBe(7000);
+    expect(guest.backlog(gid)).toBe(0);
+    expect(host.sendTo(gid, { n: 2 }, { dropIfBusy: 1000 })).toBe(false);
+    expect(host.sendTo(gid, { n: 3 }, { dropIfBusy: 5000 })).toBe(true); // at the limit still goes
+    expect(host.sendTo(gid, { n: 4 })).toBe(true); // no option: unchanged
+    await pump();
+    expect(got).toEqual([{ n: 1 }, { n: 3 }, { n: 4 }]);
+
+    net.current!.setBacklog(gid, 0);
+    expect(host.sendTo(gid, { n: 5 }, { dropIfBusy: 1000 })).toBe(true);
+    host.leave();
+    guest.leave();
   });
 
   it('tells the host when a guest leaves, and people updates reach the others', async () => {

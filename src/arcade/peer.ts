@@ -35,6 +35,9 @@ export interface ConnectionHandlers<TMessage> {
   onMessage: (msg: TMessage) => void;
   /** Fires each time a data channel freshly opens — the cue to (re)sync. */
   onOpen: () => void;
+  /** The broker says no such peer is registered. Return true to stop dialing
+   * (the guest is told at once); otherwise the dial is retried until it times out. */
+  onPeerUnavailable?: () => boolean;
 }
 
 /**
@@ -53,6 +56,24 @@ export interface ConnectionConfig<TMessage> {
 
 const DIAL_RETRY_MS = 2500;
 export const DIAL_TIMEOUT_MS = 20000;
+
+/**
+ * Bytes queued to one person on a channel: what the data channel has not yet
+ * put on the wire (`bufferedAmount`) plus what PeerJS holds back in its own
+ * queue once the channel passes its 8 MiB mark. 0 if unknown.
+ */
+export function connBacklog(conn: DataConnection | null | undefined): number {
+  if (!conn) return 0;
+  const c = conn as unknown as { dataChannel?: { bufferedAmount?: number } | null; _buffer?: unknown };
+  let bytes = c.dataChannel?.bufferedAmount ?? 0;
+  if (Array.isArray(c._buffer)) {
+    for (const item of c._buffer) {
+      const size = (item as { byteLength?: number; size?: number } | null) ?? {};
+      bytes += size.byteLength ?? size.size ?? 0;
+    }
+  }
+  return Number.isFinite(bytes) ? bytes : 0;
+}
 
 /** Characters chosen to avoid look-alikes (no O/0, I/1, L). */
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -144,6 +165,11 @@ export class GameConnection<TMessage> {
     return false;
   }
 
+  /** Bytes queued to the other device (0 if unknown or not connected). */
+  backlog(): number {
+    return this.conn && this.conn.open ? connBacklog(this.conn) : 0;
+  }
+
   destroy(): void {
     this.destroyed = true;
     if (this.dialTimer) clearTimeout(this.dialTimer);
@@ -200,7 +226,7 @@ export class GameConnection<TMessage> {
       if (this.destroyed) return;
       if (err.type === 'peer-unavailable') {
         // Host isn't online yet (or wrong code) — keep retrying until timeout.
-        if (this.role === 'guest') this.scheduleDial();
+        if (this.role === 'guest' && !this.handlers.onPeerUnavailable?.()) this.scheduleDial();
         return;
       }
       if (err.type === 'unavailable-id') {

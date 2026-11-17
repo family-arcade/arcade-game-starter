@@ -15,7 +15,7 @@
 
 import Peer, { type DataConnection } from 'peerjs';
 import { kt } from './words';
-import { CONNECTION_SERVICE, DIAL_TIMEOUT_MS, type ConnStatus, type ConnectionConfig } from './peer';
+import { CONNECTION_SERVICE, DIAL_TIMEOUT_MS, connBacklog, type ConnStatus, type ConnectionConfig } from './peer';
 
 export interface HostHandlers<TMessage> {
   onStatus: (status: ConnStatus, detail?: string) => void;
@@ -29,10 +29,15 @@ export interface HostHandlers<TMessage> {
 export interface HostConfig<TMessage> extends ConnectionConfig<TMessage> {
   /** Live guests accepted at once (default 3, so four devices in all). */
   maxGuests?: number;
+  /** Sent to a newcomer turned away from a full table, just before the channel closes. */
+  fullMessage?: TMessage;
 }
 
 const RETRY_MS = 2500;
 const DEFAULT_MAX_GUESTS = 3;
+/** A refused newcomer's channel is force-closed this long after the host's message if the newcomer has not closed it, or if it never opens. */
+const REFUSE_CLOSE_MS = 3000;
+const REFUSE_OPEN_MS = 10_000;
 
 export class GameHost<TMessage> {
   private peer: Peer | null = null;
@@ -41,6 +46,7 @@ export class GameHost<TMessage> {
   private prefix: string;
   private isMessage: (value: unknown) => value is TMessage;
   private maxGuests: number;
+  private fullMessage: TMessage | undefined;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   /** Until when a stale broker registration of our own id is retried. */
   private hostDeadline = 0;
@@ -52,6 +58,7 @@ export class GameHost<TMessage> {
     this.prefix = config.prefix;
     this.isMessage = config.isMessage;
     this.maxGuests = config.maxGuests ?? DEFAULT_MAX_GUESTS;
+    this.fullMessage = config.fullMessage;
     this.dialTimeoutMs = config.dialTimeoutMs ?? DIAL_TIMEOUT_MS;
   }
 
@@ -73,6 +80,12 @@ export class GameHost<TMessage> {
     if (!conn || !conn.open) return false;
     conn.send(msg);
     return true;
+  }
+
+  /** Bytes queued to one guest (0 if unknown or not connected). */
+  backlog(guestId: string): number {
+    const conn = this.conns.get(guestId);
+    return conn && conn.open ? connBacklog(conn) : 0;
   }
 
   /** Send to every open guest; returns how many it reached. */
@@ -119,6 +132,42 @@ export class GameHost<TMessage> {
     }
   }
 
+  /**
+   * Turn a newcomer away from a full table: once its channel opens, say why (`fullMessage`) and close after the message. A flushed close
+   * only asks the other end to close, so a newcomer that never does is closed here after `REFUSE_CLOSE_MS`; a channel that never opens
+   * is closed after `REFUSE_OPEN_MS`. A stranger dialing again and again must not pile up connections on the host's device.
+   */
+  private refuse(conn: DataConnection): void {
+    const timers = new Set<ReturnType<typeof setTimeout>>();
+    const closeNow = () => {
+      for (const t of timers) clearTimeout(t);
+      timers.clear();
+      try {
+        conn.close();
+      } catch {
+        /* refusing a stranger must never hurt the live game */
+      }
+    };
+    try {
+      timers.add(setTimeout(closeNow, REFUSE_OPEN_MS));
+      conn.on('open', () => {
+        try {
+          if (this.fullMessage !== undefined) conn.send(this.fullMessage);
+          conn.close({ flush: true });
+        } catch {
+          /* the timers below still close it */
+        }
+        timers.add(setTimeout(closeNow, REFUSE_CLOSE_MS));
+      });
+      conn.on('close', () => {
+        for (const t of timers) clearTimeout(t);
+        timers.clear();
+      });
+    } catch {
+      closeNow();
+    }
+  }
+
   private afterGuestLeft(guestId: string): void {
     this.handlers.onGuestClose(guestId);
     if (this.guests().length === 0) this.handlers.onStatus('hosting');
@@ -141,12 +190,7 @@ export class GameHost<TMessage> {
       // use the broker, so a stranger must not be handed the sync. A known guest is
       // never "past the limit": they are coming back and take their own seat.
       if (!existing && this.conns.size >= this.maxGuests) {
-        try {
-          conn.on('open', () => conn.close());
-          conn.close();
-        } catch {
-          /* refusing a stranger must never hurt the live game */
-        }
+        this.refuse(conn);
         return;
       }
       // The same guest dialing again (a wifi blip, a reloaded PWA) replaces
