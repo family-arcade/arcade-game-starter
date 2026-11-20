@@ -16,6 +16,8 @@ export const HOST_ID = 'host';
 const MAX_GUESTS = 3;
 const HOST_READY_MS = 15_000;
 const JOIN_MS = 18_000;
+/** A join keeps dialling this long after the broker first says "no such code" (a right code whose host is away for a moment) before it fails as `no-room`. */
+export const NO_ROOM_MS = 4000;
 
 /** One device in the room. `id` is what `room.sendTo` wants and what `onMessage` reports. */
 export interface Person {
@@ -75,6 +77,11 @@ export interface Room {
   sendTo(id: string, msg: object, opts?: SendOptions): boolean;
   /** Bytes queued to one person and not yet on the wire (0 if unknown or not connected). A guest can ask about `"host"`. */
   backlog(id: string): number;
+  /**
+   * Host only: take one person out of the room (a device that went silent, or said goodbye). Their seat is free at once and
+   * everyone's `people` updates. Their channel is closed, so a device that is still there dials back in by itself.
+   */
+  kick(id: string): void;
   /** Leave (a host leaving ends the room for everyone). */
   leave(): void;
 }
@@ -123,6 +130,7 @@ abstract class RoomBase implements Room {
   abstract send(msg: object): void;
   abstract sendTo(id: string, msg: object, opts?: SendOptions): boolean;
   abstract backlog(id: string): number;
+  abstract kick(id: string): void;
   abstract leave(): void;
 
   protected setStatus(s: TogetherStatus, detail?: string): void {
@@ -262,6 +270,11 @@ class HostRoom extends RoomBase {
     return this.net.backlog(id);
   }
 
+  kick(id: string): void {
+    // (GameHost reports an open channel's end through `onGuestClose`, which updates the people)
+    this.net.kick(id);
+  }
+
   leave(): void {
     this.net.destroy();
     this.finish();
@@ -273,6 +286,7 @@ class GuestRoom extends RoomBase {
   private net: GameConnection<Wire>;
   private myId = '';
   private joined: { ok: () => void; fail: (e: Error) => void } | null = null;
+  private noRoomTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(code: string, private me: Player, prefix: string) {
     super(code);
@@ -280,12 +294,20 @@ class GuestRoom extends RoomBase {
       {
         onStatus: (s, d) => this.onNet(s, d),
         onMessage: (w) => this.onWire(w),
-        onOpen: () => void this.net.send({ k: 'hello', name: this.me.name, colour: this.me.colour }),
-        // While joining, "no such peer" means a wrong code (or a host that is not there): say so now.
+        onOpen: () => {
+          // (the host is there after all: the code was right)
+          this.clearNoRoom();
+          this.net.send({ k: 'hello', name: this.me.name, colour: this.me.colour });
+        },
+        // While joining, "no such peer" is a wrong code, or a right one whose host is away for a moment (its device asleep or in
+        // another app, its socket coming back). Keep dialling for NO_ROOM_MS from the first such answer before saying the code is wrong.
         onPeerUnavailable: () => {
-          if (!this.joined) return false;
-          this.joined.fail(new JoinError('no-room', kt('kit.connection.wrongCode')));
-          return true;
+          if (!this.joined || this.noRoomTimer) return false;
+          this.noRoomTimer = setTimeout(() => {
+            this.noRoomTimer = null;
+            this.joined?.fail(new JoinError('no-room', kt('kit.connection.wrongCode')));
+          }, NO_ROOM_MS);
+          return false;
         },
       },
       { prefix, isMessage: isWire, dialTimeoutMs: JOIN_MS },
@@ -297,6 +319,7 @@ class GuestRoom extends RoomBase {
     return new Promise((resolve, reject) => {
       const give = (e: Error) => {
         clearTimeout(timer);
+        this.clearNoRoom();
         this.joined = null;
         this.net.destroy();
         this.finish();
@@ -309,6 +332,7 @@ class GuestRoom extends RoomBase {
       this.joined = {
         ok: () => {
           clearTimeout(timer);
+          this.clearNoRoom();
           this.joined = null;
           resolve(this);
         },
@@ -316,6 +340,11 @@ class GuestRoom extends RoomBase {
       };
       this.net.join(this.code);
     });
+  }
+
+  private clearNoRoom(): void {
+    if (this.noRoomTimer) clearTimeout(this.noRoomTimer);
+    this.noRoomTimer = null;
   }
 
   private onNet(s: ConnStatus, detail?: string): void {
@@ -352,6 +381,10 @@ class GuestRoom extends RoomBase {
 
   backlog(id: string): number {
     return id === HOST_ID ? this.net.backlog() : 0;
+  }
+
+  kick(): void {
+    throw new Error('room.kick: only the host can take someone out of the room.');
   }
 
   leave(): void {

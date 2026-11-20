@@ -15,7 +15,7 @@
 
 import Peer, { type DataConnection } from 'peerjs';
 import { kt } from './words';
-import { CONNECTION_SERVICE, DIAL_TIMEOUT_MS, connBacklog, type ConnStatus, type ConnectionConfig } from './peer';
+import { CONNECTION_SERVICE, DIAL_TIMEOUT_MS, RECONNECT_EVERY_MS, connBacklog, type ConnStatus, type ConnectionConfig } from './peer';
 
 export interface HostHandlers<TMessage> {
   onStatus: (status: ConnStatus, detail?: string) => void;
@@ -38,6 +38,8 @@ const DEFAULT_MAX_GUESTS = 3;
 /** A refused newcomer's channel is force-closed this long after the host's message if the newcomer has not closed it, or if it never opens. */
 const REFUSE_CLOSE_MS = 3000;
 const REFUSE_OPEN_MS = 10_000;
+/** An accepted channel that has not opened after this long is dropped (a guest still trying has dialled again four times by then). */
+const OPEN_MS = 10_000;
 
 export class GameHost<TMessage> {
   private peer: Peer | null = null;
@@ -52,6 +54,8 @@ export class GameHost<TMessage> {
   private hostDeadline = 0;
   private dialTimeoutMs: number;
   private destroyed = false;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private reconnectAt = -Infinity;
 
   constructor(handlers: HostHandlers<TMessage>, config: HostConfig<TMessage>) {
     this.handlers = handlers;
@@ -111,6 +115,8 @@ export class GameHost<TMessage> {
 
   destroy(): void {
     this.destroyed = true;
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = null;
     if (this.retryTimer) clearTimeout(this.retryTimer);
     this.retryTimer = null;
     for (const [id, conn] of this.conns) this.drop(id, conn);
@@ -173,6 +179,28 @@ export class GameHost<TMessage> {
     if (this.guests().length === 0) this.handlers.onStatus('hosting');
   }
 
+  /**
+   * Ask the broker again: at once the first time, then at most once every `RECONNECT_EVERY_MS`. While the network is away PeerJS
+   * fails each reconnect straight away and raises `disconnected` again, which would otherwise spin.
+   */
+  private reconnectSoon(peer: Peer): void {
+    if (this.reconnectTimer) return;
+    const go = (): void => {
+      this.reconnectAt = Date.now();
+      try {
+        peer.reconnect();
+      } catch {
+        /* peer already destroyed, or already connected again */
+      }
+    };
+    const wait = this.reconnectAt + RECONNECT_EVERY_MS - Date.now();
+    if (wait <= 0) return go();
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      if (!this.destroyed && this.peer === peer) go();
+    }, wait);
+  }
+
   private createPeer(id: string): void {
     const peer = new Peer(id, CONNECTION_SERVICE);
     this.peer = peer;
@@ -202,11 +230,7 @@ export class GameHost<TMessage> {
     peer.on('disconnected', () => {
       if (this.destroyed) return;
       this.handlers.onStatus('reconnecting', kt('kit.connection.brokerDropped'));
-      try {
-        peer.reconnect();
-      } catch {
-        /* peer already destroyed */
-      }
+      this.reconnectSoon(peer);
     });
 
     peer.on('error', (err: { type?: string; message?: string }) => {
@@ -238,6 +262,13 @@ export class GameHost<TMessage> {
       }
       // A failed guest dial (peer-unavailable and the like) is theirs to retry.
       if (err.type === 'peer-unavailable') return;
+      // One device's handshake failed: PeerJS raises SDP and ICE-candidate errors on the peer, without the connection
+      // (bundler.mjs:864-922). That is one guest's problem, never the room's. The channels still being made are dropped, so a dead
+      // one holds no seat; a guest mid-handshake dials again by itself. Open channels are left alone.
+      if (err.type === 'webrtc') {
+        for (const [id, conn] of [...this.conns]) if (!conn.open) this.drop(id, conn);
+        return;
+      }
       this.handlers.onStatus('error', err.message ?? kt('kit.connection.failed'));
     });
   }
@@ -248,8 +279,13 @@ export class GameHost<TMessage> {
     const isCurrent = () => !this.destroyed && this.conns.get(guestId) === conn;
 
     let opened = false;
+    // A channel that never opens (a handshake that failed without a word, a device that gave up) must not hold a seat for good.
+    const openTimer = setTimeout(() => {
+      if (isCurrent() && !opened) this.drop(guestId, conn);
+    }, OPEN_MS);
     conn.on('open', () => {
       if (!isCurrent()) return;
+      clearTimeout(openTimer);
       opened = true;
       this.handlers.onStatus('connected');
       this.handlers.onGuestOpen(guestId);
@@ -264,7 +300,16 @@ export class GameHost<TMessage> {
     // joined, so nobody needs to hear it left.
     conn.on('close', () => {
       if (!isCurrent()) return;
+      clearTimeout(openTimer);
       this.conns.delete(guestId);
+      if (opened) this.afterGuestLeft(guestId);
+    });
+
+    // An error on one channel (a failed negotiation, a closed link) ends that channel, never the room.
+    conn.on('error', () => {
+      if (!isCurrent()) return;
+      clearTimeout(openTimer);
+      this.drop(guestId, conn);
       if (opened) this.afterGuestLeft(guestId);
     });
   }

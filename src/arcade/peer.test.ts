@@ -203,6 +203,33 @@ describe('GameConnection — a reload must not strand the party', () => {
     onOpen: () => {},
   });
 
+  it('a broker that stays away is asked again once a second, not in a tight loop (PeerJS raises `disconnected` again the moment a reconnect fails)', () => {
+    const gc = new GameConnection<Msg>(quiet([]), { prefix: 'test-v1-', isMessage: isMsg });
+    gc.join('KXQZ');
+    const peer = fakePeers[fakePeers.length - 1];
+    const reconnect = vi.spyOn(peer, 'reconnect');
+    peer.emit('open');
+    peer.emit('disconnected');
+    expect(reconnect).toHaveBeenCalledTimes(1); // the first try is at once
+    for (let i = 0; i < 50; i++) peer.emit('disconnected'); // each failed try comes straight back
+    expect(reconnect).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(1000);
+    expect(reconnect).toHaveBeenCalledTimes(2);
+    for (let i = 0; i < 50; i++) peer.emit('disconnected');
+    vi.advanceTimersByTime(999);
+    expect(reconnect).toHaveBeenCalledTimes(2);
+    vi.advanceTimersByTime(1);
+    expect(reconnect).toHaveBeenCalledTimes(3);
+    // a drop long after the last try is answered at once again
+    vi.advanceTimersByTime(30_000);
+    peer.emit('disconnected');
+    expect(reconnect).toHaveBeenCalledTimes(4);
+    gc.destroy();
+    peer.emit('disconnected');
+    vi.advanceTimersByTime(5000);
+    expect(reconnect).toHaveBeenCalledTimes(4);
+  });
+
   it('a guest keeps dialing for as long as it was told to — a cold-starting iPad takes a while', () => {
     const statuses: string[] = [];
     const gc = new GameConnection<Msg>(quiet(statuses), { prefix: 'test-v1-', isMessage: isMsg, dialTimeoutMs: 120_000 });

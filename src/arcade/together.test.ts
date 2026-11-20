@@ -172,7 +172,18 @@ describe('arcade.together', () => {
   });
 
   it('a code nobody hosts rejects with no-room', async () => {
-    const err = await settle(device('g').join('ABCD')).catch((e) => e);
+    // (after 4 s of dialling: the host of a right code may be away for a moment, `reconnect.test.ts`)
+    vi.useFakeTimers();
+    const outcome = device('g').join('ABCD').then(
+      () => null,
+      (e) => e,
+    );
+    for (let i = 0; i < 14; i++) {
+      await pump();
+      await vi.advanceTimersByTimeAsync(500);
+    }
+    const err = await outcome;
+    vi.useRealTimers();
     expect(err).toBeInstanceOf(JoinError);
     expect(err.reason).toBe('no-room');
     expect(err.message).toMatch(/^Wrong code/);
@@ -221,6 +232,31 @@ describe('arcade.together', () => {
     expect(host.sendTo(gid, { n: 5 }, { dropIfBusy: 1000 })).toBe(true);
     host.leave();
     guest.leave();
+  });
+
+  it('kick removes one person and frees the seat: a full room takes a newcomer, and a guest may not kick', async () => {
+    const host = await settle(device('g').host());
+    const a = await settle(device('g', zoe).join(host.code));
+    await settle(device('g', ola).join(host.code));
+    const ghost = await settle(device('g', ola).join(host.code));
+    await pump();
+    expect(host.people).toHaveLength(4);
+    const ghostId = ghost.people.find((p) => p.me)!.id;
+    const seen: string[] = [];
+    ghost.onStatus((s) => seen.push(s));
+    host.kick(ghostId);
+    await pump();
+    expect(host.people.map((p) => p.id)).not.toContain(ghostId);
+    expect(a.people).toHaveLength(3);
+    // the kicked device's channel is closed, so it knows (and dials again by itself)
+    expect(seen).toEqual(['reconnecting']);
+    ghost.leave();
+    const late = await settle(device('g', klara).join(host.code));
+    expect(late.people).toHaveLength(4);
+    expect(() => a.kick('host')).toThrow(/only the host/);
+    host.kick('nobody'); // (an unknown id is nothing)
+    host.kick('host');
+    expect(host.people).toHaveLength(4);
   });
 
   it('tells the host when a guest leaves, and people updates reach the others', async () => {
