@@ -1,6 +1,6 @@
 /**
- * The kit against the REAL PeerJS 1.5.5 client (from the xhigh review of together fix 1, 2026-11-20; the fake peer network cannot
- * show these). No network: it runs in the suite.
+ * The kit against the REAL PeerJS 1.5.5 client, for what the fake peer network cannot
+ * show. No network: it runs in the suite.
  *
  * `GameHost`, `GameConnection` and `createTogether` run on node_modules/peerjs, with only the browser's
  * WebSocket, fetch and RTCPeerConnection stood in, and a broker that follows PeerServer 1.0.2 (peer@1.0.2 dist/module.mjs, the image
@@ -399,7 +399,7 @@ describe('the guest kit on the real PeerJS client and a PeerServer 1.0.2 broker'
     await pass(30_000);
     env.cleanDrop(t.guestId);
     await pass(10_000);
-    // (v1.10.1 ended in `error` here, the red team's F1: the reconnect's `open` dialled past the join deadline)
+    // (an older kit ended in `error` here: the reconnect's `open` dialled past the join deadline)
     expect(t.statuses).toEqual(['dialing', 'connected']);
     expect(t.opens()).toBe(1);
     expect(await t.linked()).toBe(true);

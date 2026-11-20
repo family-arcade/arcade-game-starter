@@ -1,5 +1,5 @@
 /**
- * The kit's room through the network trouble of a family evening (red team 2026-11-20, findings 3, 8, 9 and 10): a broker socket that
+ * The kit's room through the network trouble of a family evening: a broker socket that
  * drops and comes back, a phone that wakes with both links gone, a host that is away when the code is typed, one device's failed
  * handshake. Everything runs on the fake peer network, whose `reconnect()`, `disconnected` and `open` follow PeerJS 1.5.5.
  */

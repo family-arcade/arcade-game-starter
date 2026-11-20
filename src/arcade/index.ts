@@ -34,9 +34,11 @@
  *     // Slow link? Skip a message the next one replaces: false means it was dropped.
  *     if (room.isHost) room.sendTo(id, snapshot, { dropIfBusy: 8 * 1024 });  // a row is ~400 B: 8 KB is ~20 rows, ~0.2 s behind
  *     room.backlog(id);                                 // bytes queued to that person (a guest asks about "host")
+ *     if (room.isHost) room.kick(id);                   // host only: take out a device gone quiet in the lobby
  *   });
  *   // Without the panel: const room = await arcade.together.host()  or  .join('ABCD')
- *   // join rejects with a JoinError: e.reason is 'no-room' (no such code; the connection service answers after about 5 s),
+ *   // join rejects with a JoinError: e.reason is 'no-room' (no such code: about 10 s, the connection service's
+ *   // answer plus 4 s more of dialling in case the host is briefly away),
  *   // 'full' or 'timeout' (18 s). A code that is not 4 letters or numbers, or a hard connection failure, is a plain Error.
  *
  *   // In play: the pause button, top right, and a menu that always ends in Exit (it saves, then leaves).
