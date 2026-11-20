@@ -199,6 +199,24 @@ describe('GameHost', () => {
     expect(messages).toEqual([['a', { t: 'ok' }]]);
   });
 
+  it('a broker that stays away is asked again once a second, not in a tight loop', () => {
+    vi.useFakeTimers();
+    try {
+      const { host, peer } = hosted();
+      const reconnect = vi.spyOn(peer, 'reconnect');
+      for (let i = 0; i < 50; i++) peer.emit('disconnected');
+      expect(reconnect).toHaveBeenCalledTimes(1);
+      vi.advanceTimersByTime(1000);
+      expect(reconnect).toHaveBeenCalledTimes(2);
+      host.destroy();
+      peer.emit('disconnected');
+      vi.advanceTimersByTime(5000);
+      expect(reconnect).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('kick closes one guest and reports it', () => {
     const { host, closed, join } = hosted();
     const a = join('a');
